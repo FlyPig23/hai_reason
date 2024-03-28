@@ -1,31 +1,39 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from '../assets/ConsentPage.module.css';
 
-function ConsentPage() {
+function ConsentPage({ sessionId }) {
     let navigate = useNavigate();
 
-    const handleConsent = () => {
-        // Step 1: Create a user session ID
-        const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-        console.log('Consent given with session ID:', sessionId);
+    useEffect(() => {
+        // Push a new entry into the history stack
+        window.history.pushState(null, null, window.location.pathname);
 
-        // Step 2: Submit the user session ID to the backend
-        fetch('http://127.0.0.1:5000/consent', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ sessionId }),
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Success:', data);
-                navigate('/instructions');
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
+        // Handle back navigation
+        const handleBack = (event) => {
+            event.preventDefault();
+            alert("You cannot go back during the survey.");
+        };
+
+        const handleBeforeUnload = (event) => {
+            event.preventDefault();
+            alert("You cannot refresh the page during the survey.");
+        };
+
+        // Add event listener for popstate
+        window.addEventListener('popstate', handleBack);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        // Cleanup function
+        return () => {
+            window.removeEventListener('popstate', handleBack);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [navigate]);
+
+    const handleConsent = () => {
+        console.log('Consent given with session ID:', sessionId);
+        navigate('/instructions');
     };
 
     return (

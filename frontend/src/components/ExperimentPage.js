@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useMemo, useCallback} from 'react';
+import { useNavigate } from 'react-router-dom';
 import income_profiles from '../data/income_with_meta.json';
 import recidivism_profiles from '../data/recidivism_with_meta.json';
 import income_analysis from '../data/income_analysis.json';
@@ -7,69 +8,126 @@ import styles from '../assets/ExperimentPage.module.css';
 import client_image from '../images/client.png';
 import robot_image from '../images/robot.png';
 
-function ExperimentPage({ sessionId, experimentNumber }) {
+function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        // Push a new entry into the history stack
+        window.history.pushState(null, null, window.location.pathname);
+
+        // Handle back navigation
+        const handleBack = (event) => {
+            event.preventDefault();
+            alert("You cannot go back during the survey.");
+        };
+
+        const handleBeforeUnload = (event) => {
+            event.preventDefault();
+            alert("You cannot refresh the page during the survey.");
+        };
+
+        // Add event listener for popstate
+        window.addEventListener('popstate', handleBack);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        // Cleanup function
+        return () => {
+            window.removeEventListener('popstate', handleBack);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [navigate]);
+
     const [dialogueHistory, setDialogueHistory] = useState([]);
-    const [makingPrediction, setMakingPrediction] = useState(false);
+    //const [makingPrediction, setMakingPrediction] = useState(false);
     const [currentProfile, setCurrentProfile] = useState(null);
     const [currentAnalysis, setCurrentAnalysis] = useState(null);
     const [iterationCount, setIterationCount] = useState(0);
-    const [selectedFeature, setSelectedFeature] = useState('');
     const [selectedPrediction, setSelectedPrediction] = useState(null);
+    const [selectedFeatureAndAnalysis, setSelectedFeatureAndAnalysis] = useState(null);
+    const [userAgreement, setUserAgreement] = useState(null);
+    const [analyzedFeatures, setAnalyzedFeatures] = useState([]);
 
-    // Income Profiles Descriptions
-    const incomeProfileDescriptions = {
-        'age': 'Age',
-        'education.num': 'Years of Education',
-        'marital.status': 'Marital Status',
-        'occupation': 'Occupation',
-        'sex': 'Sex',
-        'hours.per.week': 'Hours Worked per Week',
-        'workclass': 'Workclass',
-    }
+    const isIncome = assignedTask === 'income';
 
-    // Recidivism Profiles Descriptions
-    const recidivismProfileDescriptions = {
-        'race': 'Race',
-        'sex': 'Sex',
-        'age': 'Age',
-        'juv_fel_count': 'Juvenile Felony Count',
-        'juv_misd_count': 'Juvenile Misdemeanor Count',
-        'priors_count': 'Prior Charges Count',
-        'charge_degree': 'Charge Degree',
-        'compas_decile_score': 'COMPAS Decile Score',
-        'c_charge_desc': 'Short Charge Description',
-        'mturk_charge_name': 'Simplified Crime Name',
-        'full_charge_description': 'Detailed Charge Description'
-    };
+    const profiles = isIncome ? income_profiles : recidivism_profiles;
+    const analysisData = isIncome ? income_analysis : recidivism_analysis;
+    const profileDescriptions = useMemo(() => {
+        return isIncome ? {
+            'age': 'Age',
+            'education.num': 'Years of Education',
+            'marital.status': 'Marital Status',
+            'occupation': 'Occupation',
+            'sex': 'Sex',
+            'hours.per.week': 'Hours Worked per Week',
+            'workclass': 'Workclass',
+        } : {
+            'race': 'Race',
+            'sex': 'Sex',
+            'age': 'Age',
+            'juv_fel_count': 'Juvenile Felony Count',
+            'juv_misd_count': 'Juvenile Misdemeanor Count',
+            'priors_count': 'Prior Charges Count',
+            'charge_degree': 'Charge Degree',
+            'compas_decile_score': 'COMPAS Decile Score',
+            'c_charge_desc': 'Short Charge Description',
+            'mturk_charge_name': 'Simplified Crime Name',
+            'full_charge_description': 'Detailed Charge Description'
+        };
+    }, [isIncome]);
 
-    const getDescription = (key) => {
-        const isIncome = experimentNumber <= 20;
-        return isIncome ? incomeProfileDescriptions[key] : recidivismProfileDescriptions[key];
-    };
-
-    const loadRandomProfile = () => {
-        const isIncome = experimentNumber <= 20;
-        const profiles = isIncome ? income_profiles : recidivism_profiles;
+    useEffect(() => {
         const randomIndex = Math.floor(Math.random() * profiles.length);
-        const profile = profiles[randomIndex];
+        const selectedProfile = profiles[randomIndex];
+        const selectedAnalysis = analysisData[randomIndex]; // Assuming alignment by index
 
-        const profileIndex = isIncome ? profile.index : profile.id;
-        const analysisKey = isIncome ? 'Index' : 'id';
-        const analysis = isIncome ? income_analysis : recidivism_analysis;
-        const relevantAnalysis = analysis.find(a => a[analysisKey] === profileIndex);
+        setCurrentProfile(selectedProfile);
+        setCurrentAnalysis(selectedAnalysis);
+    }, [assignedTask, experimentNumber, profiles, analysisData]);
 
-        setCurrentProfile(profile);
-        setCurrentAnalysis(relevantAnalysis);
+    const selectRandomFeatureAndAnalysis = useCallback(() => {
+        const unanalyzedFeatures = Object.keys(profileDescriptions).filter(feature => !analyzedFeatures.includes(feature));
+        if (unanalyzedFeatures.length === 0) {
+            return;
+        }
+
+        const randomFeature = unanalyzedFeatures[Math.floor(Math.random() * unanalyzedFeatures.length)];
+        const analysis = currentAnalysis[randomFeature];
+        setSelectedFeatureAndAnalysis({ feature: randomFeature, analysis });
+        setUserAgreement(null);
+    }, [profileDescriptions, analyzedFeatures, currentAnalysis]);
+
+    const addToDialogueHistory = (message, isUser = true, selectedFeature = null, selectedAnalysis = null) => {
+        setDialogueHistory(prev => [...prev, { message, isUser, selectedFeature, selectedAnalysis }]);
+        if (isUser) {
+            setIterationCount(prev => prev + 1);
+        }
     };
 
     useEffect(() => {
-        loadRandomProfile();
-    }, [experimentNumber]);
+        if (currentProfile && currentAnalysis && analyzedFeatures.length < Object.keys(profileDescriptions).length) {
+            setTimeout(() => {
+                selectRandomFeatureAndAnalysis();
+            }, 1000);
+        }
+    }, [currentProfile, currentAnalysis, analyzedFeatures, selectRandomFeatureAndAnalysis, profileDescriptions]);
 
-    const addToDialogueHistory = (message, isUser = true) => {
-        setDialogueHistory(prev => [...prev, { message, isUser }]);
-        if (isUser) {
-            setIterationCount(prev => prev + 1);
+    useEffect(() => {
+        if (selectedFeatureAndAnalysis) {
+            const { feature, analysis } = selectedFeatureAndAnalysis;
+            const systemMessage = `The ${profileDescriptions[feature]} for this profile is ${currentProfile[feature]}. ${analysis}`;
+            addToDialogueHistory(systemMessage, false, feature, analysis);
+        }
+    }, [selectedFeatureAndAnalysis, currentProfile, profileDescriptions]);
+
+    const handleUserAgreement = (agreement) => {
+        setUserAgreement(agreement);
+        const userMessage = agreement ? 'I agree with the analysis.' : 'I disagree with the analysis.';
+        addToDialogueHistory(userMessage, true);
+        setAnalyzedFeatures(prev => [...prev, selectedFeatureAndAnalysis.feature]);
+        if (agreement === null) {
+            setTimeout(() => {
+                selectRandomFeatureAndAnalysis();
+            }, 1000);
         }
     };
 
@@ -77,42 +135,68 @@ function ExperimentPage({ sessionId, experimentNumber }) {
     const submitPrediction = (prediction) => {
         console.log(`User predicted: ${prediction}`);
         // Proceed to the next iteration or end the experiment
-        if (experimentNumber < 40) {
+        if (experimentNumber < 20) {
             setDialogueHistory([]);
-            setMakingPrediction(false);
+            //setMakingPrediction(false);
             setSelectedPrediction(null);
-            // TODO: Load the next profile and model prediction
+            setCurrentProfile(null);
+            setCurrentAnalysis(null);
+            setIterationCount(0);
+            setSelectedFeatureAndAnalysis(null);
+            setUserAgreement(null);
+            setAnalyzedFeatures([]);
+            // Navigate to the next experiment page
+            navigate(`/experiment/${experimentNumber + 1}`);
         } else {
-            // TODO: End the experiment, navigate to Thanks Page or show a summary
+            // End the experiment and navigate to the Thanks page
+            navigate('/thanks');
         }
     };
 
-    const profileDescriptions = experimentNumber <= 20 ? incomeProfileDescriptions : recidivismProfileDescriptions;
-
     return (
         <div className={styles.container}>
-            <h2 className={styles.taskHeader}>Prediction Task {experimentNumber <= 20 ? 'Income' : 'Recidivism'} ({experimentNumber}/40)</h2>
+            <h2 className={styles.taskHeader}>Prediction Task {isIncome ? 'Income' : 'Recidivism'} ({experimentNumber}/20)</h2>
             <div className={styles.profileDialogueContainer}>
                 <div className={styles.profileContainer}>
                     {currentProfile && (
                         <>
                             <div className={styles.profileFeatures}>
+                                <h3>Profile:</h3>
                                 {Object.entries(currentProfile).map(([key, value]) => (
                                     profileDescriptions[key] && (
                                         <div key={key} className={styles.profileFeature}>
-                                            <span className={styles.featureLabel}>{getDescription(key)}:</span>
+                                            <span className={styles.featureLabel}>{profileDescriptions[key]}:</span>
                                             <span className={styles.featureValue}>{value}</span>
                                         </div>
                                     )
                                 ))}
                             </div>
                             <div className={styles.modelPrediction}>
-                                {`Model Prediction: ${currentProfile.model_prediction}`}
+                                {isIncome ? (
+                                    <>
+                                        <h3>Model Prediction:</h3>
+                                        <div>
+                                            {currentProfile.model_prediction === '0'
+                                                ? 'The model predicts that this individual does not earn over $50,000 per year.'
+                                                : 'The model predicts that this individual earns over $50,000 per year.'}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>Model Prediction:
+                                        </div>
+                                        <div>
+                                            {currentProfile.model_prediction === '0'
+                                                ? 'The model predicts that this individual will not recidivate two years after previous charge.'
+                                                : 'The model predicts that this individual will recidivate two years after previous charge.'}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                             {iterationCount >= 3 && (
                                 <div className={styles.userPredictionSection}>
                                     <h3>Make your prediction:</h3>
-                                    {experimentNumber <= 20 ? (
+                                    {isIncome ? (
                                         <>
                                             <button
                                                 className={`${styles.predictionButton} ${selectedPrediction === 'above $50,000' ? styles.selectedButton : ''}`}
@@ -168,24 +252,21 @@ function ExperimentPage({ sessionId, experimentNumber }) {
                             </div>
                         ))}
                     </div>
-                    <div className={styles.featureQuestions}>
-                        {Object.keys(profileDescriptions).map(key => (
-                            <button
-                                key={key}
-                                className={styles.featureQuestionButton}
-                                onClick={() => {
-                                    const question = `What does ${getDescription(key)} tell us about the prediction?`;
-                                    setSelectedFeature(key);
-                                    addToDialogueHistory(question, true);
-                                    setTimeout(() => {
-                                        const analysis = currentAnalysis[key];
-                                        addToDialogueHistory(analysis, false);
-                                    }, 1000);
-                                }}
-                            >
-                                {getDescription(key)}
-                            </button>
-                        ))}
+                    <div className={styles.agreementButtons}>
+                        <button
+                            className={styles.agreementButton}
+                            onClick={() => handleUserAgreement(true)}
+                            disabled={!selectedFeatureAndAnalysis || userAgreement !== null}
+                        >
+                            Agree
+                        </button>
+                        <button
+                            className={styles.agreementButton}
+                            onClick={() => handleUserAgreement(false)}
+                            disabled={!selectedFeatureAndAnalysis || userAgreement !== null}
+                        >
+                            Disagree
+                        </button>
                     </div>
                 </div>
             </div>
