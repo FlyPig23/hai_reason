@@ -1,0 +1,191 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    max-width: 1200px; /* or any max-width you prefer */
+    margin: auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.taskHeader {
+    font-size: 24px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.profileDialogueContainer {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.profileContainer {
+    flex-basis: 48%; /* gives the profile container a base width of 48% of the flex container's width */
+    margin-right: 2%; /* Optional: to put a little margin between the two containers */
+    padding: 15px;
+    border: 1px solid #ccc; /* a light grey border */
+    border-radius: 5px; /* rounded corners */
+    background-color: #f9f9f9; /* a light background color */
+}
+
+.avatar {
+    width: 30px;
+    height: 30px;
+    margin-right: 10px;
+    border-radius: 50%;
+}
+
+.userMessage,
+.systemMessage {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.userMessage {
+    justify-content: flex-start;
+}
+
+.systemMessage {
+    justify-content: space-between;
+}
+
+.systemMessage .avatar {
+    order: 1;
+    margin-left: 10px;
+    margin-right: 0;
+}
+
+.dialogueContainer {
+    flex-basis: 48%; /* same base width as profile container for symmetry */
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.dialogueHistory {
+    height: 50vh;
+    overflow-y: auto; /* Allows scrolling for overflow text */
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #fff; /* white background for the history log */
+    border: 1px solid #ddd; /* a slightly darker border for the history container */
+    border-radius: 5px;
+}
+
+.questionInput {
+    width: calc(100% - 22px); /* 100% width minus padding and border */
+    padding: 10px;
+    margin-bottom: 10px; /* Space between input and button */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.questionButton {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff; /* a blue background for visibility */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.questionButton:hover {
+    background-color: #0056b3; /* darker blue on hover for feedback */
+}
+
+.predictionSection {
+    text-align: center; /* Centers the buttons and text */
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    margin-top: 20px; /* Adds space between sections */
+}
+
+.profileFeatures {
+    margin-bottom: 20px;
+}
+
+.profileFeature {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.featureLabel {
+    font-weight: bold;
+}
+
+.featureValue {
+    margin-left: 10px;
+}
+
+.modelPrediction {
+    margin-bottom: 20px;
+}
+
+.userPredictionSection {
+    margin-top: 20px;
+}
+
+
+.featureQuestions {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.featureQuestionButton {
+    background-color: #f0f0f0;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.featureQuestionButton:hover {
+    background-color: #e0e0e0;
+}
+
+.predictionButton {
+    background-color: #f0f0f0;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.predictionButton:hover {
+    background-color: #e0e0e0;
+}
+
+.selectedButton {
+    background-color: #007bff;
+    color: white;
+}
+
+.submitButton {
+    background-color: #f0f0f0;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.submitButton:hover {
+    background-color: #e0e0e0;
+}
+
+.activeButton {
+    background-color: #007bff;
+    color: white;
+}
+
+
