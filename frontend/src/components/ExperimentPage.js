@@ -176,8 +176,8 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
         const payload = {
             sessionId,
             experimentNumber,
-            selectedProfileIndex: currentProfile ? (isIncome ? currentProfile.index : currentProfile.id) : null, // Adjust based on your data structure
-            chatHistory: dialogueHistory, // Assuming dialogueHistory is an array of chat messages
+            selectedProfileIndex: currentProfile ? (isIncome ? currentProfile.index : currentProfile.id) : null,
+            chatHistory: dialogueHistory,
             userPrediction: selectedPrediction,
             chatIterations: iterationCount,
         };
@@ -219,8 +219,6 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
             }
         } catch (error) {
             console.error('Error during experiment data upload:', error);
-            // Handle the error appropriately
-            // You might want to inform the user or retry the upload
         }
     };
 
