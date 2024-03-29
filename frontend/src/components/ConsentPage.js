@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import styles from '../assets/ConsentPage.module.css';
+// import styles from '../assets/ConsentPage.module.css';
 
 function ConsentPage({ sessionId }) {
     let navigate = useNavigate();

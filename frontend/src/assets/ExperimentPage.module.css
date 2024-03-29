@@ -26,6 +26,7 @@
     border: 1px solid #ccc; /* a light grey border */
     border-radius: 5px; /* rounded corners */
     background-color: #f9f9f9; /* a light background color */
+    height: auto;
 }
 
 .avatar {
@@ -40,14 +41,28 @@
     display: flex;
     align-items: center;
     margin-bottom: 10px;
+    border-radius: 10px;
+    max-width: 70%;
+    text-align: left;
+    padding: 5px 10px 5px 10px;
 }
 
 .userMessage {
     justify-content: flex-start;
+    background-color: #007bff;
+    color: white;
+    align-self: flex-end;
+    margin-right: 30%;
+    margin-left: 0;
 }
 
 .systemMessage {
     justify-content: space-between;
+    background-color: #f0f0f0;
+    color: #333;
+    align-self: flex-start;
+    margin-right: 0;
+    margin-left: 30%;
 }
 
 .systemMessage .avatar {
@@ -62,38 +77,18 @@
     border: 1px solid #ccc;
     border-radius: 5px;
     background-color: #f9f9f9;
+    height: auto;
 }
 
 .dialogueHistory {
     height: 85%;
     overflow-y: auto; /* Allows scrolling for overflow text */
+    max-height: 700px;
     margin-bottom: 10px;
     padding: 10px;
     background-color: #fff; /* white background for the history log */
     border: 1px solid #ddd; /* a slightly darker border for the history container */
     border-radius: 5px;
-}
-
-.questionInput {
-    width: calc(100% - 22px); /* 100% width minus padding and border */
-    padding: 10px;
-    margin-bottom: 10px; /* Space between input and button */
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-
-.questionButton {
-    width: 100%;
-    padding: 10px;
-    background-color: #007bff; /* a blue background for visibility */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.questionButton:hover {
-    background-color: #0056b3; /* darker blue on hover for feedback */
 }
 
 .predictionSection {
@@ -123,7 +118,7 @@
 .profileFeature {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
     padding: 10px;
     border-bottom: 1px solid #eee;
 }
@@ -176,22 +171,79 @@
 }
 
 .predictionButton {
-    background-color: #f0f0f0;
+    background-color: #ccc;
     border: none;
-    border-radius: 5px;
+    border-radius: 20px;
+    color: #333;
     padding: 10px 20px;
-    margin-right: 10px;
+    margin: 0 10px;
     cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .predictionButton:hover {
-    background-color: #007bff;
+    background-color: #999;
+}
+
+.aboveButton.selectedButton,
+.willReoffendButton.selectedButton {
+    background-color: #bf3131;
+    color: #fff;
+}
+
+.belowButton.selectedButton,
+.willNotReoffendButton.selectedButton {
+    background-color: #436850;
+    color: #fff;
+    cursor: pointer;
+}
+
+.aboveButton:hover,
+.willReoffendButton:hover {
+    background-color: #bf3131;
+    color: white;
+    cursor: pointer;
+}
+
+.belowButton:hover,
+.willNotReoffendButton:hover {
+    background-color: #436850;
+    color: white;
+    cursor: pointer;
+}
+
+.aboveButton,
+.willReoffendButton {
+    background-color: #ff4d4d;
     color: white;
 }
 
-.selectedButton {
-    background-color: #007bff;
+.belowButton,
+.willNotReoffendButton {
+    background-color: #3bb5ac;
     color: white;
+}
+
+.submitButton {
+    background-color: #ccc;
+    border: none;
+    border-radius: 20px;
+    color: #333;
+    padding: 10px 20px;
+    margin-top: 20px;
+    cursor: not-allowed;
+    transition: background-color 0.3s ease;
+}
+
+.submitButton.activeButton {
+    background-color: #f0f0f0;
+    cursor: pointer;
+}
+
+.submitButton.activeButton:hover {
+    background-color: #0056b3;
+    color: white;
+    cursor: pointer;
 }
 
 .agreementButtons {
@@ -212,6 +264,7 @@
 .agreementButton:hover {
     background-color: #007bff;
     color: white;
+    cursor: pointer;
 }
 
 .agreementButton:disabled {
@@ -220,23 +273,58 @@
     cursor: not-allowed;
 }
 
-.submitButton {
-    background-color: #f0f0f0;
+.modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border-radius: 8px;
+    outline: none;
+    padding: 20px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modalContent {
+    text-align: center;
+}
+
+.modalContent h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.modalContent p {
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.modalCloseButton {
+    background-color: #007bff;
+    color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 4px;
     padding: 10px 20px;
-    margin-top: 10px;
+    font-size: 16px;
     cursor: pointer;
 }
 
-.submitButton:hover {
-    background-color: #007bff;
-    color: white;
+.modalCloseButton:hover {
+    background-color: #0056b3;
 }
-
-.activeButton {
-    background-color: #007bff;
-    color: white;
-}
-
 

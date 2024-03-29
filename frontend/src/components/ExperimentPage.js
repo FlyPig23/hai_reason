@@ -1,5 +1,6 @@
-import React, {useState, useEffect, useMemo, useCallback} from 'react';
+import React, {useState, useEffect, useMemo, useCallback, useRef} from 'react';
 import { useNavigate } from 'react-router-dom';
+import Modal from 'react-modal';
 import income_profiles from '../data/income_with_meta.json';
 import recidivism_profiles from '../data/recidivism_with_meta.json';
 import income_analysis from '../data/income_analysis.json';
@@ -10,6 +11,7 @@ import robot_image from '../images/robot.png';
 
 function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
     const navigate = useNavigate();
+    const dialogueHistoryRef = useRef(null);
 
     useEffect(() => {
         // Push a new entry into the history stack
@@ -46,6 +48,8 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
     const [selectedFeatureAndAnalysis, setSelectedFeatureAndAnalysis] = useState(null);
     const [userAgreement, setUserAgreement] = useState(null);
     const [analyzedFeatures, setAnalyzedFeatures] = useState([]);
+    const [started, setStarted] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const isIncome = assignedTask === 'income';
 
@@ -75,18 +79,29 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
         };
     }, [isIncome]);
 
+    // Load a profile at the start or when the task/number changes
     useEffect(() => {
         const randomIndex = Math.floor(Math.random() * profiles.length);
         const selectedProfile = profiles[randomIndex];
-        const selectedAnalysis = analysisData[randomIndex]; // Assuming alignment by index
+        // Get the corresponding "index" field from the profile
+        if (isIncome) {
+            const profileIndex = selectedProfile.index;
+            const selectedAnalysis = analysisData.find(data => data.Index === profileIndex);
+            setCurrentProfile(selectedProfile);
+            setCurrentAnalysis(selectedAnalysis);
+        } else {
+            const profileIndex = selectedProfile.id;
+            const selectedAnalysis = analysisData.find(data => data.id === profileIndex);
+            setCurrentProfile(selectedProfile);
+            setCurrentAnalysis(selectedAnalysis);
+        }
+    }, [assignedTask, experimentNumber, profiles, analysisData, isIncome]);
 
-        setCurrentProfile(selectedProfile);
-        setCurrentAnalysis(selectedAnalysis);
-    }, [assignedTask, experimentNumber, profiles, analysisData]);
-
+    // Function to select a random feature and analysis not yet shown
     const selectRandomFeatureAndAnalysis = useCallback(() => {
         const unanalyzedFeatures = Object.keys(profileDescriptions).filter(feature => !analyzedFeatures.includes(feature));
         if (unanalyzedFeatures.length === 0) {
+            setIsModalOpen(true);
             return;
         }
 
@@ -96,6 +111,11 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
         setUserAgreement(null);
     }, [profileDescriptions, analyzedFeatures, currentAnalysis]);
 
+    // Function to close the modal
+    const closeModal = () => {
+        setIsModalOpen(false);
+    };
+
     const addToDialogueHistory = (message, isUser = true, selectedFeature = null, selectedAnalysis = null) => {
         setDialogueHistory(prev => [...prev, { message, isUser, selectedFeature, selectedAnalysis }]);
         if (isUser) {
@@ -103,13 +123,13 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
         }
     };
 
-    useEffect(() => {
-        if (currentProfile && currentAnalysis && analyzedFeatures.length < Object.keys(profileDescriptions).length) {
-            setTimeout(() => {
-                selectRandomFeatureAndAnalysis();
-            }, 1000);
-        }
-    }, [currentProfile, currentAnalysis, analyzedFeatures, selectRandomFeatureAndAnalysis, profileDescriptions]);
+    // useEffect(() => {
+    //     if (currentProfile && currentAnalysis && analyzedFeatures.length < Object.keys(profileDescriptions).length && started) {
+    //         setTimeout(() => {
+    //             selectRandomFeatureAndAnalysis();
+    //         }, 1000);
+    //     }
+    // }, [currentProfile, currentAnalysis, analyzedFeatures, selectRandomFeatureAndAnalysis, profileDescriptions, started]);
 
     useEffect(() => {
         if (selectedFeatureAndAnalysis) {
@@ -119,23 +139,67 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
         }
     }, [selectedFeatureAndAnalysis, currentProfile, profileDescriptions]);
 
+    useEffect(() => {
+        if (dialogueHistoryRef.current) {
+            dialogueHistoryRef.current.scrollTop = dialogueHistoryRef.current.scrollHeight;
+        }
+    }, [dialogueHistory]);
+
+    const handleStart = () => {
+        setStarted(true);
+        const userMessage = 'Let\'s start the analysis.';
+        addToDialogueHistory(userMessage, true);
+        // Wait for a second before starting the analysis
+        setTimeout(() => {
+            selectRandomFeatureAndAnalysis();
+        }, 500);
+    };
+
+    const handleContinue = () => {
+        setTimeout(() => {
+            selectRandomFeatureAndAnalysis();
+        }, 500);
+    };
+
     const handleUserAgreement = (agreement) => {
         setUserAgreement(agreement);
         const userMessage = agreement ? 'I agree with the analysis.' : 'I disagree with the analysis.';
         addToDialogueHistory(userMessage, true);
         setAnalyzedFeatures(prev => [...prev, selectedFeatureAndAnalysis.feature]);
-        if (agreement === null) {
-            setTimeout(() => {
-                selectRandomFeatureAndAnalysis();
-            }, 1000);
-        }
     };
 
     // Placeholder for submitting the user's prediction
-    const submitPrediction = (prediction) => {
+    const submitPrediction = async (prediction) => {
         console.log(`User predicted: ${prediction}`);
-        // Proceed to the next iteration or end the experiment
-        if (experimentNumber < 20) {
+        setSelectedPrediction(prediction);
+
+        const payload = {
+            sessionId,
+            experimentNumber,
+            selectedProfileIndex: currentProfile ? (isIncome ? currentProfile.index : currentProfile.id) : null, // Adjust based on your data structure
+            chatHistory: dialogueHistory, // Assuming dialogueHistory is an array of chat messages
+            userPrediction: selectedPrediction,
+            chatIterations: iterationCount,
+        };
+
+        try {
+            // Attempt to upload the experiment data
+            const response = await fetch('http://127.0.0.1:5000/experiment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload experiment data');
+            }
+
+            const responseData = await response.json();
+            console.log('Experiment data successfully uploaded:', responseData);
+
+            // Reset component state as necessary before navigation
             setDialogueHistory([]);
             //setMakingPrediction(false);
             setSelectedPrediction(null);
@@ -145,11 +209,18 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
             setSelectedFeatureAndAnalysis(null);
             setUserAgreement(null);
             setAnalyzedFeatures([]);
-            // Navigate to the next experiment page
-            navigate(`/experiment/${experimentNumber + 1}`);
-        } else {
-            // End the experiment and navigate to the Thanks page
-            navigate('/thanks');
+            setStarted(false);
+
+            // Navigate based on whether the current experiment number is less than the total experiments
+            if (experimentNumber < 20) {
+                navigate(`/experiment/${experimentNumber + 1}`);
+            } else {
+                navigate('/thanks');
+            }
+        } catch (error) {
+            console.error('Error during experiment data upload:', error);
+            // Handle the error appropriately
+            // You might want to inform the user or retry the upload
         }
     };
 
@@ -176,36 +247,61 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
                                     <>
                                         <h3>Model Prediction:</h3>
                                         <div>
-                                            {currentProfile.model_prediction === '0'
-                                                ? 'The model predicts that this individual does not earn over $50,000 per year.'
-                                                : 'The model predicts that this individual earns over $50,000 per year.'}
+                                            {currentProfile.model_prediction === 0
+                                                ? (
+                                                    <span>
+                                                        The model predicts that this individual{' '}
+                                                        <span style={{ color: 'green', fontWeight: 'bold' }}>does not earn</span>{' '}
+                                                        over $50,000 per year.
+                                                    </span>
+                                                )
+                                                : (
+                                                    <span>
+                                                        The model predicts that this individual{' '}
+                                                        <span style={{ color: 'red', fontWeight: 'bold' }}>earns</span>{' '}
+                                                        over $50,000 per year.
+                                                    </span>
+                                                )
+                                            }
                                         </div>
                                     </>
                                 ) : (
                                     <>
-                                        <div>Model Prediction:
-                                        </div>
+                                        <h3>Model Prediction:</h3>
                                         <div>
-                                            {currentProfile.model_prediction === '0'
-                                                ? 'The model predicts that this individual will not recidivate two years after previous charge.'
-                                                : 'The model predicts that this individual will recidivate two years after previous charge.'}
+                                            {currentProfile.model_prediction === 0
+                                                ? (
+                                                    <span>
+                                                        The model predicts that this individual{' '}
+                                                        <span style={{ color: 'green', fontWeight: 'bold' }}>will not</span>{' '}
+                                                        recidivate two years after previous charge.
+                                                    </span>
+                                                    )
+                                                : (
+                                                    <span>
+                                                        The model predicts that this individual{' '}
+                                                        <span style={{ color: 'red', fontWeight: 'bold' }}>will</span>{' '}
+                                                        recidivate two years after previous charge.
+                                                    </span>
+                                                )
+                                            }
                                         </div>
                                     </>
                                 )}
                             </div>
-                            {iterationCount >= 3 && (
+                            {iterationCount >= 4 && (
                                 <div className={styles.userPredictionSection}>
                                     <h3>Make your prediction:</h3>
                                     {isIncome ? (
                                         <>
                                             <button
-                                                className={`${styles.predictionButton} ${selectedPrediction === 'above $50,000' ? styles.selectedButton : ''}`}
+                                                className={`${styles.predictionButton} ${styles.aboveButton} ${selectedPrediction === 'above $50,000' ? styles.selectedButton : ''}`}
                                                 onClick={() => setSelectedPrediction('above $50,000')}
                                             >
                                                 Above $50,000
                                             </button>
                                             <button
-                                                className={`${styles.predictionButton} ${selectedPrediction === 'below $50,000' ? styles.selectedButton : ''}`}
+                                                className={`${styles.predictionButton} ${styles.belowButton} ${selectedPrediction === 'below $50,000' ? styles.selectedButton : ''}`}
                                                 onClick={() => setSelectedPrediction('below $50,000')}
                                             >
                                                 Below $50,000
@@ -214,13 +310,13 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
                                     ) : (
                                         <>
                                             <button
-                                                className={`${styles.predictionButton} ${selectedPrediction === 'will reoffend' ? styles.selectedButton : ''}`}
+                                                className={`${styles.predictionButton} ${styles.willReoffendButton} ${selectedPrediction === 'will reoffend' ? styles.selectedButton : ''}`}
                                                 onClick={() => setSelectedPrediction('will reoffend')}
                                             >
                                                 Will Reoffend
                                             </button>
                                             <button
-                                                className={`${styles.predictionButton} ${selectedPrediction === 'will not reoffend' ? styles.selectedButton : ''}`}
+                                                className={`${styles.predictionButton} ${styles.willNotReoffendButton} ${selectedPrediction === 'will not reoffend' ? styles.selectedButton : ''}`}
                                                 onClick={() => setSelectedPrediction('will not reoffend')}
                                             >
                                                 Will Not Reoffend
@@ -240,7 +336,7 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
                     )}
                 </div>
                 <div className={styles.dialogueContainer}>
-                    <div className={styles.dialogueHistory}>
+                    <div className={styles.dialogueHistory} ref={dialogueHistoryRef}>
                         {dialogueHistory.map((msg, index) => (
                             <div key={index} className={msg.isUser ? styles.userMessage : styles.systemMessage}>
                                 <img
@@ -253,23 +349,52 @@ function ExperimentPage({ sessionId, experimentNumber, assignedTask }) {
                         ))}
                     </div>
                     <div className={styles.agreementButtons}>
-                        <button
-                            className={styles.agreementButton}
-                            onClick={() => handleUserAgreement(true)}
-                            disabled={!selectedFeatureAndAnalysis || userAgreement !== null}
-                        >
-                            Agree
-                        </button>
-                        <button
-                            className={styles.agreementButton}
-                            onClick={() => handleUserAgreement(false)}
-                            disabled={!selectedFeatureAndAnalysis || userAgreement !== null}
-                        >
-                            Disagree
-                        </button>
+                        {!started ? (
+                            <button className={styles.agreementButton} onClick={handleStart}>
+                                Start
+                            </button>
+                        ) : (
+                            <>
+                                <button
+                                    className={styles.agreementButton}
+                                    onClick={() => handleUserAgreement(true)}
+                                    disabled={userAgreement !== null}
+                                >
+                                    Agree
+                                </button>
+                                <button
+                                    className={styles.agreementButton}
+                                    onClick={() => handleUserAgreement(false)}
+                                    disabled={userAgreement !== null}
+                                >
+                                    Disagree
+                                </button>
+                                <button
+                                    className={styles.agreementButton}
+                                    onClick={handleContinue}
+                                    disabled={userAgreement === null}
+                                >
+                                    Continue
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
+            <Modal
+                isOpen={isModalOpen}
+                onRequestClose={closeModal}
+                className={styles.modal}
+                overlayClassName={styles.modalOverlay}
+            >
+                <div className={styles.modalContent}>
+                    <h2>All Features Analyzed</h2>
+                    <p>All features have been analyzed. Please make your prediction.</p>
+                    <button onClick={closeModal} className={styles.modalCloseButton}>
+                        Close
+                    </button>
+                </div>
+            </Modal>
         </div>
     );
 }
